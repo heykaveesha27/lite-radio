@@ -14,28 +14,55 @@
     <div id="ui">
         <div id="header">
         <div class="">
-        <h1 id="stationName"><span style="font-weight: 100;">lite</span>RADIO</h1>
+            <div id="top-row"  >
+                <h1 id="stationName"><span style="font-weight: 100;">lite</span>RADIO</h1>
+                <button id="search-button" class="buttons"><i class="fa-solid fa-angle-down fa-xs"></i></button>
+            </div>
+        
         <h6 id="location"></h6>
         </div>
         <div id="city-name">Click a city marker</div>
 
-        <input type="text" id="search-input" placeholder="Search station or city">
+        
 
         <div id="player-info">
                 <div id="player-controls">
-                    <button id="play-pause-button" disabled><i class="fa-solid fa-circle-notch fa-sm fa-spin"></i></button>
-                                        <button id="play-pause-button" disabled><i class="fa-solid fa-circle-notch fa-sm fa-spin"></i></button>
-                    <button id="play-pause-button" disabled><i class="fa-solid fa-circle-notch fa-sm fa-spin"></i></button>
-
+                    
+                    <button id="play-pause-button" class="buttons" disabled><i class="fa-solid fa-circle-notch fa-sm fa-spin"></i></button>
                     <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
+                    <button id="search-button" class="buttons"><i class="fa-solid fa-magnifying-glass fa-xs"></i></button>
                 </div>
                 <!--hidden audio engine-->
                 <audio id="audioPlayer"></audio>
             </div>
+            
         </div>
         <div id="city-info">
             
             <div id="station-list"><span style="font-size: 1rem; color: #000000; padding: 20px;">No station selected</span></div>
+             <div id="btn-row">
+
+                <div id="default-actions">
+                    <button id="search-trigger" class="buttons" style="color: black;padding-left: 10%;"><i class="fa-solid fa-magnifying-glass fa-xs"></i></button>
+
+                <div style="display: flex; justify-content: space-evenly; align-items: center;flex: 1;">
+                    <button id="search-button" class="buttons" style="color: black;"><i class="fa-solid fa-unlock fa-xs"></i></button>
+                    <button id="search-button" class="buttons" style="color: black;"><i class="fa-regular fa-heart fa-xs"></i></button>
+                    <button id="search-button" class="buttons" style="color: black;"><i class="fa-solid fa-plus fa-xs"></i></button>
+                    <button id="search-button" class="buttons" style="color: black;"><i class="fa-solid fa-minus fa-xs"></i></button>
+                </div>
+
+                </div>
+
+                <div id="search-container" style="display: none;">
+                    <input type="text" id="search-input" placeholder="Search station or city" >
+                    <button id="close-search"><i class="fa-solid fa-circle-xmark fa-xl"></i></button>
+                </div>
+
+                
+
+                
+            </div>
         </div>
 
     </div>
@@ -43,6 +70,8 @@
     
 
     <div id="globe-container"></div>
+
+    <div id="crosshair"></div>
 <!--
     <div id="player-bar">
         <span id="now-playing">Ready to stream</span>
