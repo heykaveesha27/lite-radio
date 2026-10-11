@@ -82,6 +82,52 @@
             const crosshairEl = document.getElementById('crosshair');
             let currentFocusedCity = null
         
+            function triggerPlay(station, btnElement){
+                if (btnElement){
+                    const allBtns = stationListEl.querySelectorAll('.station-btn');
+                    allBtns.forEach(b=>b.classList.remove('active'));
+                    btnElement.classList.add('active');
+                }
+                playPauseButton.disabled = false;
+                stationName.textContent = station.name;
+                playPauseButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>';
+
+
+                audioPlayer.src = station.url;
+                audioPlayer.load();
+                audioPlayer.play();
+            }
+
+            function renderSidebarList(stations){
+                stationListEl.innerHTML = '';
+
+                if (!stations || stations.length ===0){
+                   stationListEl.innerHTML = '<span class="empty-state">No stations in range</span>';
+                    return;
+                }
+
+                stations.forEach(station=>{
+                    const btn = document.createElement('button');
+                    btn.className = 'station-btn';
+                    btn.innerHTML = `
+            <span class="station-label">${station.name}</span>
+            <div class="eq-bars">
+                <div class="eq-bar"></div>
+                <div class="eq-bar"></div>
+                <div class="eq-bar"></div>
+            </div>
+        `;
+        // When clicked, trigger the play helper
+        btn.onclick = () => triggerPlay(station, btn);
+        stationListEl.appendChild(btn);
+                })
+            }
+
+            function autoPlayFirst(stations){
+                if (stations && stations.length > 0 && stationListEl.firstChild){
+                    triggerPlay(stations[0], stationListEl.firstChild);
+                }
+            }
 
         // Fetching dynamically from the Go API
         fetch('/api/cities')
@@ -103,36 +149,12 @@
                         searchInput.value='';
 
                         cityNameEl.textContent = `${city.name}, ${city.country}`;
-                        stationListEl.innerHTML = '<span class="empty-state"></span>'
                         
-                        if(city.stations && city.stations.length>0){
-                            playPauseButton.disabled = false
-                            stationName.textContent=`${city.stations[0].name}`;
-                            cityNameEl.textContent = `${city.name}, ${city.country}`;
-                            audioPlayer.src = city.stations[0].url;
-                            audioPlayer.load();
-                            audioPlayer.play();
-                        }
+                        world.pointOfView({ lat: city.lat, lng: city.lng, altitude: 1.5 }, 2500);
+                        renderSidebarList(city.stations);
+                        autoPlayFirst(city.stations);
 
-                        city.stations.forEach(station => {
-                            const btn = document.createElement('button');
-                            btn.className = 'station-btn';
-                            btn.textContent = `${station.name}`;
-                            btn.onclick = () => {
-
-                                
-                               
-                                playPauseButton.disabled = false
-                               
-                                stationName.textContent=`${station.name}`;
-                                playPauseButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>'
-                                audioPlayer.src = station.url;
-                                audioPlayer.load()
-                                audioPlayer.play();
-                                
-                            };
-                            stationListEl.appendChild(btn);
-                        });
+                       
                     });
 
                 // --- 1. INITIAL LOAD FLY-TO ---
@@ -165,42 +187,10 @@
                             world.pointsData(cities); // Update dot color
                             
                             cityNameEl.textContent = `${closestCity.name}, ${closestCity.country}`;
-                             closestCity.stations.forEach(station => {
-                            const btn = document.createElement('button');
-                            btn.className = 'station-btn';
-                            btn.textContent = `${station.name}`;
 
-                            if(closestCity.stations && closestCity.stations.length>0){
-                            playPauseButton.disabled = false
-                            stationName.textContent=`${closestCity.stations[0].name}`;
-                                
-                            audioPlayer.src = closestCity.stations[0].url;
-                            audioPlayer.load();
-                            audioPlayer.play();
-                        }    
-
-
-                            btn.onclick = () => {
-
-                                
-                               
-                                playPauseButton.disabled = false
-                               
-                                stationName.textContent=`${station.name}`;
-                                playPauseButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>'
-                                audioPlayer.src = station.url;
-                                audioPlayer.load()
-                                audioPlayer.play();
-                                
-                            };
-                            stationListEl.appendChild(btn);
-                        });
-                            
-                            
-                            if (closestCity.stations.length > 0) {
-                                
-                            }
-                        }, 2600);
+                            renderSidebarList(closestCity.stations)
+                            autoPlayFirst(closestCity.stations)
+                        }, 3000);
                     }
                 },
                 (error) => {
@@ -214,6 +204,8 @@
                 world.controls().autoRotateSpeed = 0;
 
                 world.controls().addEventListener('change',()=>{
+                   
+                    
                     const {lat, lng} = world.pointOfView();
                    
                     let closestCity = null;
@@ -230,32 +222,37 @@
                     if (minDistance<300){
                         if (closestCity !== currentFocusedCity){
                             currentFocusedCity = closestCity;
-
+                            
                             crosshairEl.classList.add('locked');
                             world.pointsData(cities);
 
                             cityNameEl.textContent = `${closestCity.name}, ${closestCity.country}`;
-
-                            if(closestCity.stations && closestCity.stations.length>0){
-                            playPauseButton.disabled = false
-                            stationName.textContent=`${closestCity.stations[0].name}`;
-                            
-                            audioPlayer.src = closestCity.stations[0].url;
-                            audioPlayer.load();
-                            audioPlayer.play();
-                        }
-
-                            
-                        closestCity.stations.forEach(station => {
+                            stationListEl.innerHTML = ''
+                 
+                        closestCity.stations.forEach((station) => {
                             const btn = document.createElement('button');
                             btn.className = 'station-btn';
-                            btn.textContent = `${station.name}`;
+                           // btn.textContent = `${station.name}`;
+
+                            btn.innerHTML = `
+                    <span class="station-label">${station.name}</span>
+                    <div class="eq-bars">
+                        <div class="eq-bar"></div>
+                        <div class="eq-bar"></div>
+                        <div class="eq-bar"></div>
+                    </div>
+                `;
+
                             btn.onclick = () => {
 
-                                
-                               
+                                // Remove 'active' class from all buttons in the list
+                    const allBtns = stationListEl.querySelectorAll('.station-btn');
+                    allBtns.forEach(b => b.classList.remove('active'));
+                    
+                    // Add 'active' class to the clicked button
+                    btn.classList.add('active');
+
                                 playPauseButton.disabled = false
-                               
                                 stationName.textContent=`${station.name}`;
                                 playPauseButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>'
                                 audioPlayer.src = station.url;
@@ -265,7 +262,18 @@
                             };
                             stationListEl.appendChild(btn);
                         });
-                            
+                            if(closestCity.stations && closestCity.stations.length>0){
+                                playPauseButton.disabled = false;
+                                stationName.textContent = `${closestCity.stations[0].name}`;
+                                
+                                audioPlayer.src = closestCity.stations[0].url;
+                                
+                                // This works now because the buttons were appended in step 2
+                                stationListEl.firstChild.classList.add('active'); 
+                                
+                                audioPlayer.load();
+                                audioPlayer.play();
+                            }
 
                         }
                     }else{
@@ -274,11 +282,13 @@
                             crosshairEl.classList.remove('locked');
                             world.pointsData(cities);
 
-                            cityNameEl.textContent = "Drags to scan...";
+                            
                             stationListEl.innerHTML = '<span class="empty-state">No stations in range</span>';
                         }
                     }
                 })
+
+                let lastRenderedCity = null;
 
                 world.controls().addEventListener('end',()=>{
                     if (currentFocusedCity){
@@ -289,24 +299,11 @@
                             lng: currentFocusedCity.lng,
                             altitude: currentAltitude
                         },400)
-                         stationListEl.innerHTML='';
-                         currentFocusedCity.stations.forEach(station => {
-                            const btn = document.createElement('button');
-                            btn.className = 'station-btn';
-                            btn.textContent = `${station.name}`;
-                            btn.onclick = () => {
-
-                                playPauseButton.disabled = false
-                               
-                                stationName.textContent=`${station.name}`;
-                                playPauseButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>'
-                                audioPlayer.src = station.url;
-                                audioPlayer.load()
-                                audioPlayer.play();
-                                
-                            };
-                            stationListEl.appendChild(btn);
-                        });
+                         if(currentFocusedCity !== lastRenderedCity){
+                            renderSidebarList(currentFocusedCity.stations);
+                            autoPlayFirst(currentFocusedCity.station);
+                            lastRenderedCity=currentFocusedCity;
+                         }
                     }
                 });
 
@@ -336,14 +333,11 @@
                                     stationName.textContent = `${station.name}`
                                     cityNameEl.textContent = `${city.name}, ${city.country}`;
                                     world.pointOfView({lat:city.lat, lng: city.lng, altitude:1.5},1000)
-                                    playPauseButton.disabled = false
+                                    triggerPlay(station,btn)
                                 
                                 
                                 
-                                playPauseButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>'
-                                audioPlayer.src = station.url;
-                                audioPlayer.load()
-                                audioPlayer.play();
+                                
                             
                                 
                                 }

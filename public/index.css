@@ -319,7 +319,14 @@ background: rgba(0,0,0,0.6);
             transition: border-color 0.2s;
 
         }
-
+@keyframes spinCrosshair{
+    0%{
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    100%{
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
 
 #crosshair{
     position: absolute;
@@ -332,6 +339,8 @@ background: rgba(0,0,0,0.6);
     border-radius: 50%;
     pointer-events: none;
     z-index: 5;
+    animation: spinCrosshair 10s linear infinite;
+
     transition: border-color 0.2s, transform 0.2s;
     
 }
@@ -339,7 +348,41 @@ background: rgba(0,0,0,0.6);
 #crosshair.locked{
     border-color: #00ffcc;
     border-style: solid;
+
+    border-width: 3px;
     transform: translate(-50%, -50%) scale(1.1);
+}
+
+.station-btn{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.eq-bars{
+    display: none;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+}
+
+.station-btn.active .eq-bars{
+    display: flex;
+}
+
+.eq-bar{
+    width: 3px;
+    background-color: #000000;
+    animation: eq-bounce 0.8s infinite ease-in-out;
+}
+
+.eq-bar:nth-child(1){animation-delay: 0.0s;}
+.eq-bar:nth-child(2){animation-delay: 0.2s;}
+.eq-bar:nth-child(3){animation-delay: 0.4s;}
+
+@keyframes eq-bounce{
+    0%, 100% {height: 4px;}
+    50% {height: 14px;}
 }
 
         @media (max-width: 768px) {
