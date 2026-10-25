@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radio Garden Clone</title>
     <script src="//unpkg.com/globe.gl"></script>
+    <script src="https://unpkg.com/tz-lookup"></script>
     <script src="https://kit.fontawesome.com/96a0b3cb5f.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="index.css">
 
@@ -16,7 +17,10 @@
         <div class="">
             <div id="top-row"  >
                 <h1 id="stationName"><span style="font-weight: 100;">lite</span>RADIO</h1>
-                <button id="search-button" class="buttons"><i class="fa-solid fa-angle-down fa-xs"></i></button>
+
+                <div id="local-time" style="font-size: 0.9rem; color: #ffffff; margin-top: 5px;">
+                    
+                </div>
             </div>
         
         <h6 id="location"></h6>
@@ -30,7 +34,8 @@
                     
                     <button id="play-pause-button" class="buttons" disabled><i class="fa-solid fa-circle-notch fa-sm fa-spin"></i></button>
                     <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
-                    <button id="search-button" class="buttons"><i class="fa-solid fa-magnifying-glass fa-xs"></i></button>
+                    
+                    <button id="upDown" class="buttons"><i class="fa-solid fa-angle-down fa-xs"></i></button>
                 </div>
                 <!--hidden audio engine-->
                 <audio id="audioPlayer"></audio>
@@ -46,11 +51,15 @@
                     <button id="search-trigger" class="buttons" style="color: black;padding-left: 10%;"><i class="fa-solid fa-magnifying-glass fa-xs"></i></button>
 
                 <div style="display: flex; justify-content: space-evenly; align-items: center;flex: 1;">
-                    <button id="search-button" class="buttons" style="color: black;"><i class="fa-solid fa-unlock fa-xs"></i></button>
-                    <button id="search-button" class="buttons" style="color: black;"><i class="fa-regular fa-heart fa-xs"></i></button>
-                    <button id="search-button" class="buttons" style="color: black;"><i class="fa-solid fa-plus fa-xs"></i></button>
-                    <button id="search-button" class="buttons" style="color: black;"><i class="fa-solid fa-minus fa-xs"></i></button>
+                    <button id="lock-button" class="buttons" style="color: black;"><i class="fa-solid fa-unlock fa-xs"></i></button>
+                   
+                    <button id="fav-button" class="buttons" style="color: black;"><i class="fa-regular fa-heart fa-xs"></i></button>
+                    <button id="favlist-button" class="buttons" style="color: black;"><i class="fa-solid fa-list fa-xs"></i></i></button>
+                    <button id="add-station" class="buttons" style="color: black;"><i class="fa-solid fa-plus fa-xs"></i></button>
+                   
                 </div>
+
+                
 
                 </div>
 

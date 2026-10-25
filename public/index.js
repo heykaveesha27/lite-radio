@@ -9,7 +9,40 @@
 //<i class="fa-solid fa-lock"></i>
 //<i class="fa-solid fa-gear"></i>
 //<i class="fa-solid fa-circle-notch"></i>
+//<i class="fa-regular fa-heart fa-xs"></i>
 
+
+        let timeInterval = null;
+        
+        function startLocalClock(lat, lng){
+            const timeEl = document.getElementById('local-time');
+            
+            if (timeInterval) clearInterval(timeInterval);
+            console.log("time function called")
+            let timeZoneName;
+            try{
+                timeZoneName = tzlookup(lat, lng);
+            }catch (err){
+                timeEl.textContent = "error";
+                return;
+            }
+
+            const updateTime = () => {
+                const now = new Date();
+
+                const timeString = now.toLocaleTimeString('en-US', {
+                    timeZone: timeZoneName,
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: false
+                });
+
+                timeEl.innerHTML = `<i class="fa-regular fa-clock"></i> ${timeString}`
+            }
+
+            updateTime();
+            timeInterval=setInterval(updateTime,1000)
+        }
 
         const audioPlayer = document.getElementById('audioPlayer');
         const nowPlayingText = document.getElementById('now-playing');
@@ -30,12 +63,317 @@
         const searchTrigger = document.getElementById('search-trigger');
         const closeSearchBtn = document.getElementById('close-search');
         const searchInputEl = document.getElementById('search-input');
+        const lock = document.getElementById('lock-button');
+
+        const upDown = document.getElementById('upDown')
+        const addStation = document.getElementById("add-station");
+        let isDown = false;
+
+        const favButton = document.getElementById('fav-button');
+        const favListButton = document.getElementById('favlist-button')
+
+        let isFavVisible = false;
+
+        favListButton.addEventListener('click', ()=>{
+
+            isFavVisible = !isFavVisible;
+
+            if(isFavVisible){
+
+            if(favorites.length === 0){
+                stationListEl.innerHTML =`
+                <div style="padding: 20px; color: black; text-align: center;">
+                <p>No favorites saved yet.</p>
+                <p style="font-size: 0.8rem; margin-bottom: 15px;">Click the heart at the top when a station is playing to save it.</p>
+              
+            </div>
+                `;
+            }else{
+                let favHTML = `
+            <div style="padding: 15px; color: black;">
+                <h3 style="margin: 0 0 10px 0;">My Favorites</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto;">
+
+        `;
+        
+                favorites.forEach(station => {
+            // Re-uses your existing station button styling
+            favHTML += `
+                <button class="station-btn" style="text-align: left; padding: 10px; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer;" 
+                        onclick="('${station.url}')">
+                    <span style="font-weight: bold;">${station.name}</span>
+                </button>
+            `;})
+
+                    favHTML += `
+                </div></div>
+        `;
+
+        stationListEl.innerHTML = favHTML;
+
+            }
+        }else{
+            if(currentFocusedCity){
+                renderSidebarList(currentFocusedCity.staions);
+            }else{
+                stationListEl.innerHTML='<span style="font-size: 1rem; color: #000000; padding: 20px;">No station selected</span>';
+            }
+        }
+
+        })
+
+
+        let favorites = JSON.parse(localStorage.getItem('liteRadioFavs'))||[];
+        favButton.addEventListener('click',()=>{
+            if (stationName === "lite"){
+                favButton.style.display ='none';
+            }else{favButton.style.display='block'}
+
+            const streamUrl = document.getElementById('audioPlayer').src;
+
+            const existingIndex = favorites.findIndex(fav=> fav.url === streamUrl);
+            const heartIcon = favButton.querySelector('i');
+
+            if (existingIndex>-1){
+                favorites.splice(existingIndex, 1);
+                heartIcon.classList.remove('fa-solid');
+                heartIcon.classList.add('fa-regular');
+                heartIcon.style.color="black"
+            }else{
+                favorites.push({name: stationName, url:streamUrl});
+                heartIcon.classList.remove('fa-regular');
+                heartIcon.classList.add('fa-solid');
+                heartIcon.style.color="#00ff00";
+            }
+
+            localStorage.setItem('liteRadioFavs',JSON.stringify(favorites))
+
+            
+        })
+
+        // Add this wherever you update the currently playing station
+function updateHeaderFavoriteState(streamUrl) {
+    const heartIcon = document.getElementById('fav-button').querySelector('i');
+    
+    // Check if the current stream exists in our saved favorites
+    const isFavorite = favorites.some(fav => fav.url === streamUrl);
+    
+    if (isFavorite) {
+        heartIcon.classList.remove('fa-regular');
+        heartIcon.classList.add('fa-solid');
+        heartIcon.style.color = "red";
+    } else {
+        heartIcon.classList.remove('fa-solid');
+        heartIcon.classList.add('fa-regular');
+        heartIcon.style.color = "black";
+    }
+}
+
+
+        function toggleFavorite(stationName, streamUrl){
+            const existingIndex = favorites.findIndex(fav => fav.url === streamUrl);
+
+            if(existingIndex > -1){
+                favorites.splice(existingIndex, 1);
+            }else{
+                favorites.push({name: stationName, url: streamUrl});
+            }
+
+            localStorage.setItem('liteRadioFavs', JSON.stringify(favorites));
+        }
+
+
+
+        window.removeFavoriteFromUI = function(url){
+            toggleFavorite('',url);
+            document.getElementById('fav-btn').click();
+        }
+
+        function debounce(func, wait){
+            let timeout;
+            return function(...args){
+                clearTimeout(timeout);
+                timeout = setTimeout(()=>func.apply(this, args), wait);
+            }
+        }
+
+        upDown.addEventListener('click',()=>{
+            isDown = !isDown;
+            if (isDown){
+                stationListEl.style.display = 'none';
+                upDown.innerHTML = '<i class="fa-solid fa-angle-up fa-xs"></i>'
+            }else{
+                stationListEl.style.display = 'block';
+                upDown.innerHTML = '<i class="fa-solid fa-angle-down fa-xs"></i>'
+            }
+        })
+
+        addStation.addEventListener('click', ()=>{
+
+            
+            stationListEl.innerHTML = `
+            <div style="padding: 15px; color: black;display: flex;flex-direction: column;gap: 10px;">
+                    <h3 style="margin: 0 0 10px 0;">Add to Global Database</h3>
+                    <form id="new-station-form" style="display: flex;flex-direction: column;gap: 10px;">
+                        <input type="text" id="ns-name" placeholder="Station Name (e.g. Hiru FM)" required style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                <input type="url" id="ns-url" placeholder="Stream URL (http://...)" required style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                <input type="url" id="ns-homepage" placeholder="Station Website URL" required style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+               <input list="location-list" id="ns-location-search" placeholder="Type city name..." required autocomplete="off" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; outline: none;">
+                <datalist id="location-list"></datalist>
+
+                <input type="text" id="ns-country" placeholder="Country" required style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                <input type="text" id="ns-city" placeholder="City"  required style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                <input type="text" id="ns-lang" placeholder="Language (e.g. Sinhala)" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+
+                <!-- Hidden coordinate fields -->
+                <input type="hidden" id="ns-lat">
+                <input type="hidden" id="ns-lng">
+
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                    <button type="submit"  class="form-btn"  style="flex: 1; padding: 4px; background: #00ff00; color: black; border-radius: 4px;">Submit</button>
+                    <button type="button" class="form-btn" id="ns-cancel"  style="flex: 1; padding: 8px; background: #ddd; color: black; border-radius: 4px;">Cancel</button>
+                </div>
+                <div id="ns-status" style="font-size: 0.8rem; text-align: center; margin-top: 5px;"></div>
+                    </form>
+                </div>
+            `;
+
+            const searchInput = document.getElementById('ns-location-search');
+            const dataList = document.getElementById('location-list');
+            let lastFetchedPlaces=[];
+
+            searchInput.addEventListener('input',debounce(async(e)=>{
+                const query = e.target.value;
+                if (query.length < 3) return;
+
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`);
+                    lastFetchedPlaces = await res.json();
+
+                    dataList.innerHTML = lastFetchedPlaces.map(place=>
+                        `<option value="${place.name}, ${place.address.country || ''}">`
+                    ).join('');
+                }catch(err){
+                    console.error("OSM Fetch Error:", err);
+                }
+            },600));
+
+            searchInput.addEventListener('change',(e)=>{
+                const query = e.target.value;
+                const selectedPlace = lastFetchedPlaces.find(p => `${p.name}, ${p.address.country || ''}` === query)
+                
+                if (selectedPlace){
+            document.getElementById('ns-city').value = selectedPlace.name || selectedPlace.address.city || selectedPlace.address.town || "Unknown";
+            document.getElementById('ns-country').value = selectedPlace.address.country || "Unknown";
+            // Fill hidden coordinate fields for your 3D globe
+            document.getElementById('ns-lat').value = selectedPlace.lat;
+            document.getElementById('ns-lng').value = selectedPlace.lon;
+                }
+            })
+
+            document.getElementById('ns-cancel').addEventListener('click',()=>{
+                if(currentFocusedCity){
+                    renderSidebarList(currentFocusedCity.stations);
+                    
+                }else{
+                    stationListEl.innerHTML = '<span class="empty-state">No station selected</span>';
+                }
+            })
+
+            document.getElementById('new-station-form').addEventListener('submit',(e)=>{
+                e.preventDefault();
+
+                const statusText = document.getElementById('ns-status');
+                statusText.textContent = "Validating stream... plaese wait.";
+                statusText.style.color = "blue";
+
+                const payload = {
+                    name: document.getElementById('ns-name').value,
+                    url: document.getElementById('ns-url').value,
+                    homepage: document.getElementById('ns-homepage').value,
+                    city: document.getElementById('ns-city').value,
+                    country: document.getElementById('ns-country').value,
+                    lat: parseFloat(document.getElementById('ns-lat').value) || 0,
+                    lng: parseFloat(document.getElementById('ns-lng').value) || 0,
+                    language: document.getElementById('ns-lang').value
+                };
+
+                if (payload.lat === 0 && payload.lng === 0 ){
+                    statusText.textContent = "Please select a valid city from the search suggestions.";
+                    statusText.style.color = "red";
+                    return
+                }
+
+                fetch('/api/add/station',{
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                })
+                .then(async (response)=>{
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || "Failed to add station");
+
+                    let existingCity = cities.find(c=> c.name.toLowerCase() === payload.city.toLowerCase());
+
+                    if(existingCity){
+                        existingCity.stations.push({name: payload.name,url: payload.url});
+
+                        if (currentFocusedCity && currentFocusedCity.name.toLowerCase() === existingCity.name.toLowerCase()){
+                            renderSidebarList(existingCity.stations);
+                        }else{
+
+                            const newCity = {
+                                name :payload.name,
+                                country: payload.country,
+                                lat: payload.lat,
+                                lng: payload.lng,
+                                stations: [{name: payload.name, url: payload.url}]
+                            };
+                            cities.push(newCity);
+
+                            world.pointsData(cities);
+
+                            world.pointOfView({lat: newCity.lat, lng:newCity.lng, altitude: 1.5}, 1500);
+                            currentFocusedCity = newCity;
+                            cityNameEl.textContent = `${newCity.name}, ${newCity.country}`;
+                            renderSidebarList(newCity.stations)
+                        }
+                    }
+
+                    statusText.textContent = "Success! Station verified and added";
+                    statusText.style.color = "green";
+                    setTimeout(()=> document.getElementById('ns-cancel').click(),2000);
+                })
+                .catch(error=>{
+                    statusText.textContent = "Error: " + error.message;
+                    statusText.style.color = "red";
+                })
+
+            })
+
+            document.getElementById('new-station-form').addEventListener('submit',(e)=>{
+                e.preventDefault();
+
+                const statusText = document.getElementById('ns-status');
+                statusText.textContent = "Validating stream... please wait.";
+                statusText.style.color="blue"
+
+                const payload = {
+                    
+                }
+        })
+        })
+
+
+
 
         searchTrigger.addEventListener('click',()=>{
             defaultActions.style.display = 'none';
             searchContainer.style.display = 'flex';
             searchInputEl.focus();
         })
+
+
 
         closeSearchBtn.addEventListener('click',()=>{
             searchContainer.style.display = 'none';
@@ -47,6 +385,7 @@
 
 
         playPauseButton.addEventListener('click',()=>{
+            
             if (audioPlayer.paused){
                 audioPlayer.play()
             }else{
@@ -60,7 +399,7 @@
 
         audioPlayer.addEventListener("waiting", ()=>{playPauseButton.innerHTML='<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>';})
 
-        audioPlayer.addEventListener("loadstart", ()=>{playPauseButton.innerHTML='<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>';})
+        audioPlayer.addEventListener("loadstart", ()=>{playPauseButton.innerHTML='<i class="fa-solid fa-play fa-sm"></i>';})
 
         audioPlayer.addEventListener("playing",()=> {
         playPauseButton.innerHTML = '<i class="fa-solid fa-pause fa-sm"></i>';})
@@ -68,6 +407,24 @@
         audioPlayer.addEventListener('pause', () => {
             playPauseButton.innerHTML ='<i class="fa-solid fa-play fa-sm"></i>';});
 
+let cities=[];
+let world; 
+let isAutoFlying = false;
+
+        let isLocked = false;
+
+        lock.addEventListener('click', () => {
+    isLocked = !isLocked;
+    console.log(isLocked)
+    
+    if (isLocked) {
+        lock.innerHTML = '<i class="fa-solid fa-lock fa-xs"></i>';
+        lock.style.color = '#00ffcc'; // Highlight green when locked
+    } else {
+        lock.innerHTML = '<i class="fa-solid fa-unlock fa-xs"></i>';
+        lock.style.color = 'black'; // Revert to your default button color
+    }
+});
 
             function getDistance(lat1, lon1, lat2, lon2){
                 const R = 6371;
@@ -83,6 +440,8 @@
             let currentFocusedCity = null
         
             function triggerPlay(station, btnElement){
+              if (isLocked) return;
+              
                 if (btnElement){
                     const allBtns = stationListEl.querySelectorAll('.station-btn');
                     allBtns.forEach(b=>b.classList.remove('active'));
@@ -92,13 +451,16 @@
                 stationName.textContent = station.name;
                 playPauseButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>';
 
-
+              
                 audioPlayer.src = station.url;
                 audioPlayer.load();
-                audioPlayer.play();
+               audioPlayer.play();
+           
             }
 
             function renderSidebarList(stations){
+
+               
                 stationListEl.innerHTML = '';
 
                 if (!stations || stations.length ===0){
@@ -109,6 +471,7 @@
                 stations.forEach(station=>{
                     const btn = document.createElement('button');
                     btn.className = 'station-btn';
+                 
                     btn.innerHTML = `
             <span class="station-label">${station.name}</span>
             <div class="eq-bars">
@@ -117,6 +480,8 @@
                 <div class="eq-bar"></div>
             </div>
         `;
+
+
         // When clicked, trigger the play helper
         btn.onclick = () => triggerPlay(station, btn);
         stationListEl.appendChild(btn);
@@ -124,16 +489,57 @@
             }
 
             function autoPlayFirst(stations){
+if(isLocked){return}
+               
                 if (stations && stations.length > 0 && stationListEl.firstChild){
                     triggerPlay(stations[0], stationListEl.firstChild);
+
                 }
             }
+
+
+            // HELPER 4: Jumps to a city, builds the sidebar, and plays a specific station
+function jumpToStation(city, targetStation) {
+    isAutoFlying = true;
+    // 1. Lock the city so the globe's 'end' event ignores this flight
+    currentFocusedCity = city;
+    lastRenderedCity = city;
+
+    crosshairEl.classList.add('locked');
+    world.pointsData(world.pointsData());
+    
+    // 2. Fly the globe to the destination
+    world.pointOfView({ lat: city.lat, lng: city.lng, altitude: 1.5 }, 1000);
+    
+    // 3. Update UI and immediately render the sidebar list
+    if(!isLocked){cityNameEl.textContent = `${city.name}, ${city.country}`;}
+    renderSidebarList(city.stations);
+    
+    // 4. Find the matching button in the newly rendered list to highlight its EQ bars
+    const allBtns = stationListEl.querySelectorAll('.station-btn');
+    let buttonToHighlight = allBtns[0]; // Fallback to first
+    
+    allBtns.forEach(btn => {
+        if (btn.querySelector('.station-label').textContent === targetStation.name) {
+            buttonToHighlight = btn;
+        }
+    });
+
+    // 5. Use your existing helper to play the audio and start the animation
+    triggerPlay(targetStation, buttonToHighlight);
+
+    setTimeout(()=>{
+        isAutoFlying = false;
+    },1100)
+}
+
 
         // Fetching dynamically from the Go API
         fetch('/api/cities')
             .then(response => response.json())
-            .then(cities => {
-                const world = Globe()
+            .then(data => {
+                cities = data
+                 world = Globe()
                     (document.getElementById('globe-container'))
                     .globeImageUrl('//unpkg.com/three-globe/example/img/earth-dark.jpg')
                     .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
@@ -147,15 +553,25 @@
                     .pointLabel(d => `${d.name}, ${d.country}`)
                     .onPointClick(city => {
                         searchInput.value='';
-
-                        cityNameEl.textContent = `${city.name}, ${city.country}`;
+                        isDown = true;
+                        stationListEl.style.display = 'block'
+                        upDown.innerHTML = '<i class="fa-solid fa-angle-down fa-xs"></i>' 
+                     if(!isLocked){  cityNameEl.textContent = `${city.name}, ${city.country}`;}
                         
                         world.pointOfView({ lat: city.lat, lng: city.lng, altitude: 1.5 }, 2500);
                         renderSidebarList(city.stations);
                         autoPlayFirst(city.stations);
-
+                        startLocalClock(city.lat,city.lng)
                        
                     });
+
+                const globeContainer = document.getElementById('globe-container');
+                const resizeGlobe = () => {
+                    world.width(globeContainer.clientWidth);
+                    world.height(globeContainer.clientHeight);
+                };
+                window.addEventListener('resize', resizeGlobe);
+                resizeGlobe();
 
                 // --- 1. INITIAL LOAD FLY-TO ---
         if (navigator.geolocation) {
@@ -177,6 +593,7 @@
                     });
 
                     if (closestCity) {
+                        isAutoFlying = true;
                         // Fly to the closest city over 2.5 seconds
                         world.pointOfView({ lat: closestCity.lat, lng: closestCity.lng, altitude: 1.5 }, 2500);
                         
@@ -184,13 +601,34 @@
                         setTimeout(() => {
                             currentFocusedCity = closestCity;
                             crosshairEl.classList.add('locked');
-                            world.pointsData(cities); // Update dot color
+                            world.pointsData(cities); 
                             
-                            cityNameEl.textContent = `${closestCity.name}, ${closestCity.country}`;
+                        if(!isLocked){    cityNameEl.textContent = `${closestCity.name}, ${closestCity.country}`;}
 
-                            renderSidebarList(closestCity.stations)
-                            autoPlayFirst(closestCity.stations)
-                        }, 3000);
+                            // 1. Draw the sidebar list
+                            renderSidebarList(closestCity.stations);
+                            
+                            // 2. Cue the first station without playing it
+                            if (closestCity.stations && closestCity.stations.length > 0) {
+                                const firstStation = closestCity.stations[0];
+                                
+                                // Load the audio into the player
+                                audioPlayer.src = firstStation.url;
+                                audioPlayer.load();
+                                
+                                // Update the bottom UI
+                                stationName.textContent = firstStation.name;
+                                playPauseButton.disabled = false;
+                                playPauseButton.innerHTML = '<i class="fa-solid fa-play fa-sm"></i>';
+                                
+                                // Highlight the first button in the list
+                                if (stationListEl.firstChild) {
+                                    stationListEl.firstChild.classList.add('active');
+                                }
+                            }
+                            
+                            isAutoFlying = false;
+                        }, 2600);
                     }
                 },
                 (error) => {
@@ -204,8 +642,10 @@
                 world.controls().autoRotateSpeed = 0;
 
                 world.controls().addEventListener('change',()=>{
-                   
-                    
+                   if (isAutoFlying) return;
+                    isDown = true;
+                    stationListEl.style.display = 'block'
+                        upDown.innerHTML = '<i class="fa-solid fa-angle-down fa-xs"></i>' 
                     const {lat, lng} = world.pointOfView();
                    
                     let closestCity = null;
@@ -226,7 +666,7 @@
                             crosshairEl.classList.add('locked');
                             world.pointsData(cities);
 
-                            cityNameEl.textContent = `${closestCity.name}, ${closestCity.country}`;
+                          if(!isLocked)  {cityNameEl.textContent = `${closestCity.name}, ${closestCity.country}`;}
                             stationListEl.innerHTML = ''
                  
                         closestCity.stations.forEach((station) => {
@@ -242,13 +682,14 @@
                         <div class="eq-bar"></div>
                     </div>
                 `;
+               
 
                             btn.onclick = () => {
 
                                 // Remove 'active' class from all buttons in the list
                     const allBtns = stationListEl.querySelectorAll('.station-btn');
                     allBtns.forEach(b => b.classList.remove('active'));
-                    
+                    if(!isLocked){
                     // Add 'active' class to the clicked button
                     btn.classList.add('active');
 
@@ -256,23 +697,26 @@
                                 stationName.textContent=`${station.name}`;
                                 playPauseButton.innerHTML = '<i class="fa-solid fa-circle-notch fa-sm fa-spin"></i>'
                                 audioPlayer.src = station.url;
+                               
                                 audioPlayer.load()
                                 audioPlayer.play();
-                                
+                    }
                             };
                             stationListEl.appendChild(btn);
                         });
-                            if(closestCity.stations && closestCity.stations.length>0){
+                            if(closestCity.stations && closestCity.stations.length>0 && !isLocked){
                                 playPauseButton.disabled = false;
                                 stationName.textContent = `${closestCity.stations[0].name}`;
                                 
                                 audioPlayer.src = closestCity.stations[0].url;
                                 
                                 // This works now because the buttons were appended in step 2
-                                stationListEl.firstChild.classList.add('active'); 
+                               stationListEl.firstChild.classList.add('active');
                                 
                                 audioPlayer.load();
-                                audioPlayer.play();
+                               audioPlayer.play();
+                              
+                           
                             }
 
                         }
@@ -291,6 +735,10 @@
                 let lastRenderedCity = null;
 
                 world.controls().addEventListener('end',()=>{
+                    if (isAutoFlying) return;
+                    isDown = true;
+                    stationListEl.style.display = 'block'
+                        upDown.innerHTML = '<i class="fa-solid fa-angle-down fa-xs"></i>' 
                     if (currentFocusedCity){
                         const currentAltitude = world.pointOfView().altitude;
 
@@ -301,9 +749,13 @@
                         },400)
                          if(currentFocusedCity !== lastRenderedCity){
                             renderSidebarList(currentFocusedCity.stations);
-                            autoPlayFirst(currentFocusedCity.station);
+                            if (isLocked) return
+                            autoPlayFirst(currentFocusedCity.stations);
+                          //  stationListEl.firstChild.classList.add('active')
                             lastRenderedCity=currentFocusedCity;
+                            
                          }
+                          startLocalClock(currentFocusedCity.lat,currentFocusedCity.lng)
                     }
                 });
 
@@ -317,7 +769,9 @@
                         stationListEl.innerHTML = '<span class="empty-state">No Station Selected</span>'
                         return;
                     }
-
+                    isDown = true;
+                    stationListEl.style.display = 'block'
+                        upDown.innerHTML = '<i class="fa-solid fa-angle-down fa-xs"></i>' 
                     cityNameEl.textContent = `Search Results: ${query}`;
                     let resultsFound = 0;
 
@@ -330,16 +784,32 @@
                                 btn.className='station-btn';
                                 btn.innerHTML = `<strong>▶ ${station.name}</strong><br><span style="font-size: 0.75rem; color: #888;">${city.name}, ${city.country}</span>`;
                                 btn.onclick = () =>  {
+
+/*
+                                    currentFocusedCity = city;
+                                    lastRenderedCity = city;
                                     stationName.textContent = `${station.name}`
                                     cityNameEl.textContent = `${city.name}, ${city.country}`;
+                                    
+                                    renderSidebarList(city.stations);
+
+                                    const allBtns = stationListEl.querySelectorAll('.station-btn');
+                                    let targetBtn = allBtns[0];
+
+                                    
+
                                     world.pointOfView({lat:city.lat, lng: city.lng, altitude:1.5},1000)
-                                    triggerPlay(station,btn)
-                                
-                                
-                                
-                                
-                            
-                                
+                                   
+                                    searchContainer.style.display='none';
+                                    defaultActions.style.display = 'flex';
+                                    
+                                */
+                               jumpToStation(city,station);
+
+                               searchContainer.style.display = 'none';
+                               defaultActions.style.display='flex';
+
+                               searchInput.value = ''
                                 }
                                 stationListEl.appendChild(btn);
                             }
