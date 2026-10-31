@@ -11,6 +11,96 @@
 //<i class="fa-solid fa-circle-notch"></i>
 //<i class="fa-regular fa-heart fa-xs"></i>
 
+import { TextureLoader, ShaderMaterial, Vector3 ,Vector2} from 'https://esm.sh/three';
+import * as solar from 'https://esm.sh/solar-calculator';
+
+const loader = new TextureLoader();
+const [dayTexture, nightTexture] = await Promise.all([
+  loader.loadAsync('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg'),
+  loader.loadAsync('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg')
+]);
+
+
+
+const material = new ShaderMaterial({
+  uniforms: {
+    dayTexture: { value: dayTexture },
+    nightTexture: { value: nightTexture },
+    sunDirection: { value: new Vector3(1, 0, 0) }
+  },
+  vertexShader: `
+    varying vec3 vNormal;
+    varying vec2 vUv;
+    void main() {
+      vNormal = normalize(normal);
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D dayTexture;
+    uniform sampler2D nightTexture;
+    uniform vec3 sunDirection;
+    varying vec3 vNormal;
+    varying vec2 vUv;
+    void main() {
+      float light = dot(normalize(vNormal), normalize(sunDirection));
+      float blend = smoothstep(-0.1, 0.1, light);
+      gl_FragColor = mix(
+        texture2D(nightTexture, vUv),
+        texture2D(dayTexture, vUv),
+        blend
+      );
+    }
+  `
+});
+
+
+function updateSunDirection(){
+    const now = new Date();
+    const utcMidnight = Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate());
+    const century = solar.century(now.getTime());
+    const longitude = ((utcMidnight-now.getTime())/86400000)*360-(90)-(solar.equationOfTime(century)/4);
+    const latitude=solar.declination(century);
+    const longitudeRadians = longitude*Math.PI/180;
+    const latitudeRadians = latitude*Math.PI/180;
+
+
+material.uniforms.sunDirection.value.set(
+  Math.cos(latitudeRadians) * Math.cos(longitudeRadians),
+  Math.sin(latitudeRadians),
+  Math.cos(latitudeRadians) * Math.sin(longitudeRadians)
+).normalize();
+    }
+
+    updateSunDirection();
+    setInterval(updateSunDirection,1000)
+/*
+let now = new Date();
+let hours =  now.getHours();
+let minutes = now.getMinutes();
+let seconds = now.getSeconds();
+let totalSeconds = hours*60*60 + minutes*60+seconds;
+let angle=totalSeconds;
+let previoiusTime;
+function animate(timestamp){
+    
+    if (previoiusTime !==undefined){
+        const deltaSeconds = (timestamp-previoiusTime)/1000;
+        angle += (2 * Math.PI / 86400) * deltaSeconds;
+        material.uniforms.sunDirection.value.set(
+            Math.cos(180),
+            0,
+            Math.sin(180)
+        )
+    }
+
+    previoiusTime=timestamp
+    requestAnimationFrame(animate)
+}
+animate();
+console.log(totalSeconds);*/
+        let lastRenderedCity = null;
 
         let timeInterval = null;
         
@@ -24,6 +114,7 @@
                 timeZoneName = tzlookup(lat, lng);
             }catch (err){
                 timeEl.textContent = "error";
+                console.log(err)
                 return;
             }
 
@@ -37,7 +128,7 @@
                     hour12: false
                 });
 
-                timeEl.innerHTML = `<i class="fa-regular fa-clock"></i> ${timeString}`
+                timeEl.innerHTML = `<span style={fontSize:"1rem"}>${timeString}</span>`
             }
 
             updateTime();
@@ -243,6 +334,8 @@ function updateHeaderFavoriteState(streamUrl) {
             let lastFetchedPlaces=[];
 
             searchInput.addEventListener('input',debounce(async(e)=>{
+
+            
                 const query = e.target.value;
                 if (query.length < 3) return;
 
@@ -455,7 +548,7 @@ let isAutoFlying = false;
                 audioPlayer.src = station.url;
                 audioPlayer.load();
                audioPlayer.play();
-           
+            
             }
 
             function renderSidebarList(stations){
@@ -531,6 +624,7 @@ function jumpToStation(city, targetStation) {
     setTimeout(()=>{
         isAutoFlying = false;
     },1100)
+        startLocalClock(city.lat, city.lng)
 }
 
 
@@ -541,9 +635,11 @@ function jumpToStation(city, targetStation) {
                 cities = data
                  world = Globe()
                     (document.getElementById('globe-container'))
-                    .globeImageUrl('//unpkg.com/three-globe/example/img/earth-dark.jpg')
+                    //.globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+    
+                    .globeMaterial(material)
                     .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
-                    .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+                    .backgroundImageUrl('//cdn.jsdelivr.net/npm/three-globe/example/img/night-sky.png')
                     .pointsData(cities)
                     .pointLat(d => d.lat)
                     .pointLng(d => d.lng)
@@ -732,7 +828,7 @@ function jumpToStation(city, targetStation) {
                     }
                 })
 
-                let lastRenderedCity = null;
+                
 
                 world.controls().addEventListener('end',()=>{
                     if (isAutoFlying) return;
@@ -760,7 +856,7 @@ function jumpToStation(city, targetStation) {
                 });
 
                 searchInput.addEventListener('input',(e)=>{
-                    const query = e.target.value.toLowerCase();
+                    const query = e.target.value.trim().toLowerCase();
                     stationListEl.innerHTML='';
 
                 
@@ -774,49 +870,35 @@ function jumpToStation(city, targetStation) {
                         upDown.innerHTML = '<i class="fa-solid fa-angle-down fa-xs"></i>' 
                     cityNameEl.textContent = `Search Results: ${query}`;
                     let resultsFound = 0;
+                    const maxSearchResults = 50;
 
-                    cities.forEach(city =>{
-                        city.stations.forEach(station=>{
+                    for(const city of cities){
+                        for(const station of city.stations || []){
                             if (station.name.toLowerCase().includes(query) || city.name.toLowerCase().includes(query)){
-                                resultsFound++;
-
+                             
                                 const btn = document.createElement('button');
                                 btn.className='station-btn';
                                 btn.innerHTML = `<strong>▶ ${station.name}</strong><br><span style="font-size: 0.75rem; color: #888;">${city.name}, ${city.country}</span>`;
                                 btn.onclick = () =>  {
-
-/*
-                                    currentFocusedCity = city;
-                                    lastRenderedCity = city;
-                                    stationName.textContent = `${station.name}`
-                                    cityNameEl.textContent = `${city.name}, ${city.country}`;
-                                    
-                                    renderSidebarList(city.stations);
-
-                                    const allBtns = stationListEl.querySelectorAll('.station-btn');
-                                    let targetBtn = allBtns[0];
-
-                                    
-
-                                    world.pointOfView({lat:city.lat, lng: city.lng, altitude:1.5},1000)
-                                   
-                                    searchContainer.style.display='none';
-                                    defaultActions.style.display = 'flex';
-                                    
-                                */
-                               jumpToStation(city,station);
-
+                                jumpToStation(city, station)
                                searchContainer.style.display = 'none';
                                defaultActions.style.display='flex';
-
                                searchInput.value = ''
                                 }
                                 stationListEl.appendChild(btn);
+                                resultsFound++;
+                                if(resultsFound >=maxSearchResults) break;
                             }
-                        })
-                    })
+                        }
+                        if(resultsFound >= maxSearchResults) break;
+                    }
                         if(resultsFound===0){
                             stationListEl.innerHTML = '<span class="empty-state">No stations found.</span>';
+                        }else if(resultsFound===maxSearchResults){
+                            const resultsLimit = document.createElement('span');
+                            resultsLimit.className = 'empty-state';
+                            resultsLimit.textContent='Showing first 50 results. Refine your search for more.';
+                            stationListEl.appendChild(resultsLimit);
                         }
                 })
             })

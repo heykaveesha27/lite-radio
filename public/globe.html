@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Globe.gl Day/Night Cycle Example</title>
+  <style>
+    body { margin: 0; background-color: #000; overflow: hidden; }
+    #globeViz { width: 100vw; height: 100vh; }
+  </style>
+
+  <!-- Load Three.js and Globe.gl via CDNs -->
+  <script src="//unpkg.com/three"></script>
+  <script src="//://unpkg.com"></script>
+  <!-- Optional: Solar Calculator for real-time sun tracking -->
+  <script src="//://unpkg.com"></script>
+</head>
+<body>
+
+  <div id="globeViz"></div>
+
+  <script>
+    // 1. Define custom GLSL Shaders for day/night blending
+    const vertexShader = `
+      varying vec3 vNormal;
+      varying vec2 vUv;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+
+    const fragmentShader = `
+      uniform sampler2D dayTexture;
+      uniform sampler2D nightTexture;
+      uniform vec3 sunDirection;
+      varying vec3 vNormal;
+      varying vec2 vUv;
+      
+      void main() {
+        // Calculate the dot product between the surface normal and the sun's direction
+        // mapping it from [-1, 1] to [0, 1] for blending
+        float intensity = dot(vNormal, normalize(sunDirection));
+        float mixRatio = smoothstep(-0.1, 0.1, intensity); // smooth transition at the terminator line
+        
+        vec4 dayColor = texture2D(dayTexture, vUv);
+        vec4 nightColor = texture2D(nightTexture, vUv);
+        
+        gl_FragColor = mix(nightColor, dayColor, mixRatio);
+      }
+    `;
+
+    // 2. Initialize the Textures
+    const textureLoader = new THREE.TextureLoader();
+    const dayTex = textureLoader.load('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg');
+    const nightTex = textureLoader.load('//://unpkg.com');
+
+    // 3. Create the Custom Shader Material
+    const customMaterial = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      uniforms: {
+        dayTexture: { value: dayTex },
+        nightTexture: { value: nightTex },
+        sunDirection: { value: new THREE.Vector3(1, 0, 0) } // Initial sun position
+      }
+    });
+
+    // 4. Initialize Globe.gl
+    const container = document.getElementById('globeViz');
+    const myGlobe = Globe()(container)
+      .globeMaterial(customMaterial) // Apply our custom shader material
+      .backgroundColor('#000000');
+
+    // 5. Day/Night Cycle Loop
+    let time = 0;
+    const speed = 0.01; // Adjust speed of the rotation cycle
+
+    function animate() {
+      time += speed;
+
+      // Rotate the sun direction around the Y-axis to simulate day/night progression
+      customMaterial.uniforms.sunDirection.value.set(
+        Math.cos(time),
+        0,
+        Math.sin(time)
+      );
+
+      requestAnimationFrame(animate);
+    }
+    
+    // Start the animation cycle once textures are loaded
+    animate();
+  </script>
+</body>
+</html>
