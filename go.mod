@@ -4,6 +4,8 @@ go 1.26.4
 
 require modernc.org/sqlite v1.58.0
 
+require github.com/lib/pq v1.12.3 // indirect
+
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect

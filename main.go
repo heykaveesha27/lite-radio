@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
+	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
 )
 
@@ -94,7 +94,7 @@ func syncRadioBrowser(db *sql.DB) {
 
 	stmt, err := tx.Prepare(`
 			INSERT INTO stations (city_name, country, lat, lng, station_name, stream_url)
-			VALUES (?, ?, ?, ?, ?, ?)
+			VALUES ($1, $2, $3, $4, $5, $6)
 	`)
 
 	if err != nil {
@@ -175,7 +175,7 @@ func handleAddStation(db *sql.DB) http.HandlerFunc {
 
 		_, err := db.Exec(`
 		INSERT INTO stations (city_name, country, lat, lng, station_name, stream_url, language)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, payload.City, payload.Country, payload.Lat, payload.Lng, payload.Name, payload.URL, payload.Language)
 
 		if err != nil {
@@ -204,10 +204,24 @@ func handleAddStation(db *sql.DB) http.HandlerFunc {
 }
 
 func main() {
+	
+	dbURL :=os.Getenv("DATABASE_URL")
+
+	if dbURL == ""{
+		log.Fatal("DATABASE_URL environment variable is required")
+	}
+
+
 
 	// 1. Initialize SQLite Database
-	db, err := sql.Open("sqlite", "./radio.db")
+	/*db, err := sql.Open("sqlite", "./radio.db")
 	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()*/
+
+	db, err := sql.Open("postgres", dbURL)
+	if err !=nil{
 		log.Fatal(err)
 	}
 	defer db.Close()
@@ -285,7 +299,7 @@ func main() {
 
 // initDB creates the table and inserts default data if empty (perfect for portfolios)
 func initDB(db *sql.DB) {
-	createTable := `
+	_, err := db.Exec(`
 	CREATE TABLE IF NOT EXISTS stations (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		city_name TEXT,
@@ -296,8 +310,8 @@ func initDB(db *sql.DB) {
 		stream_url TEXT,
 		language TEXT
 	);`
-
-	_, err := db.Exec(createTable)
+	)
+	
 	if err != nil {
 		log.Fatal(err)
 	}
