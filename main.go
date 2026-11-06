@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
 )
@@ -204,14 +207,16 @@ func handleAddStation(db *sql.DB) http.HandlerFunc {
 }
 
 func main() {
-	
-	dbURL :=os.Getenv("DATABASE_URL")
 
-	if dbURL == ""{
-		log.Fatal("DATABASE_URL environment variable is required")
+	if err := godotenv.Load(); err != nil {
+		log.Printf("No .env file loaded: %v", err)
 	}
 
+	dbURL := os.Getenv("DATABASE_URL")
 
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL environment variable is required")
+	}
 
 	// 1. Initialize SQLite Database
 	/*db, err := sql.Open("sqlite", "./radio.db")
@@ -221,12 +226,18 @@ func main() {
 	defer db.Close()*/
 
 	db, err := sql.Open("postgres", dbURL)
-	if err !=nil{
-		log.Fatal(err)
+	if err != nil {
+		log.Fatalf("Unable to commect to database: %v", err)
 	}
 	defer db.Close()
 
 	initDB(db)
+
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Database ping failed: %v", err)
+	}
+	initDB(db)
+
 	var count int
 
 	err = db.QueryRow("SELECT COUNT(*) FROM stations").Scan(&count)
@@ -237,7 +248,6 @@ func main() {
 	} else {
 		log.Printf("Database ready! Loaded %d stations", count)
 	}
-
 
 	http.HandleFunc("/api/add/station", handleAddStation(db))
 
@@ -299,9 +309,8 @@ func main() {
 
 // initDB creates the table and inserts default data if empty (perfect for portfolios)
 func initDB(db *sql.DB) {
-	_, err := db.Exec(`
-	CREATE TABLE IF NOT EXISTS stations (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+	createTableSQL := `CREATE TABLE IF NOT EXISTS stations (
+		id SERIAL PRIMARY KEY,
 		city_name TEXT,
 		country TEXT,
 		lat REAL,
@@ -309,49 +318,29 @@ func initDB(db *sql.DB) {
 		station_name TEXT,
 		stream_url TEXT,
 		language TEXT
-	);`
-	)
+	);
 	
+	-- 2. PostgtreSQL migration check: Add 'language' column safely if table pre-existed
+	ALTER TABLE stations ADD COLUMN IF NOT EXISTS language TEXT;
+	`
+	_, err := db.Exec(createTableSQL)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to initialize PostgreSQL schema: %v", err)
 	}
-
-	rows, err := db.Query("PRAGMA table_info(stations)")
-	if err != nil {
-		log.Fatal(err)
-	}
-	hasLanguage := false
-	for rows.Next() {
-		var cid, notNull, primaryKey int
-		var name, columnType string
-		var defaultValue sql.NullString
-		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
-			rows.Close()
-			log.Fatal(err)
-		}
-		if name == "language" {
-			hasLanguage = true
-		}
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		log.Fatal(err)
-	}
-	if err := rows.Close(); err != nil {
-		log.Fatal(err)
-	}
-	if !hasLanguage {
-		if _, err := db.Exec("ALTER TABLE stations ADD COLUMN language TEXT"); err != nil {
-			log.Fatal(err)
-		}
-	}
+	log.Println("PostgreSQL schema migration completed successfully.")
 
 	// Check if data exists
 	var count int
-	db.QueryRow("SELECT COUNT(*) FROM stations").Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM stations").Scan(&count)
+	if err != nil {
+		log.Printf("Error querying station count: %v", err)
+		return
+	}
 
 	if count == 0 {
 		log.Println("Database is empty. Initiating sync...")
-		syncRadioBrowser(db)
+		go syncRadioBrowser(db)
+	} else {
+		log.Printf("Database initialized with %d stations.", count)
 	}
 }
