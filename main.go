@@ -320,8 +320,20 @@ func initDB(db *sql.DB) {
 		language TEXT
 	);
 	
+	
+
 	-- 2. PostgtreSQL migration check: Add 'language' column safely if table pre-existed
 	ALTER TABLE stations ADD COLUMN IF NOT EXISTS language TEXT;
+	
+	-- 1. Delete existing duplicate rows (keeps the first inserted record)
+	DELETE FROM stations a
+	USING stations b
+	WHERE a.id > b.id
+	  AND a.stream_url = b.stream_url;
+
+	-- 2. Block future duplicate stream URLs at the database level
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_stations_stream_url ON stations (stream_url);
+
 	`
 	_, err := db.Exec(createTableSQL)
 	if err != nil {
@@ -341,6 +353,6 @@ func initDB(db *sql.DB) {
 		log.Println("Database is empty. Initiating sync...")
 		go syncRadioBrowser(db)
 	} else {
-		log.Printf("Database initialized with %d stations.", count)
+		log.Printf("Database ready with %d unique stations.", count)
 	}
 }
