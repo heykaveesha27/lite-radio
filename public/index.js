@@ -289,16 +289,18 @@ function updateHeaderFavoriteState(streamUrl) {
         }
 
         upDown.addEventListener('click',()=>{
-            isDown = !isDown;
+           
             if (isDown){
                 stationListEl.style.display = 'none';
                 upDown.innerHTML = '<i class="fa-solid fa-angle-up fa-xs"></i>'
+                isDown = false;
             }else{
                 stationListEl.style.display = 'block';
                 upDown.innerHTML = '<i class="fa-solid fa-angle-down fa-xs"></i>'
+                isDown=true;
             }
         })
-
+     //  if (upDown.innerHTML == '<i class="fa-solid fa-angle-up fa-xs"></i>' && !isDown){stationListEl.style.display = 'none';}
         addStation.addEventListener('click', ()=>{
 
             
