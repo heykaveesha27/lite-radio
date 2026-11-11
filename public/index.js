@@ -741,9 +741,6 @@ function jumpToStation(city, targetStation) {
 
                 world.controls().addEventListener('change',()=>{
                    if (isAutoFlying) return;
-                    isDown = true;
-                    stationListEl.style.display = 'block'
-                        upDown.innerHTML = '<i class="fa-solid fa-angle-down fa-xs"></i>' 
                     const {lat, lng} = world.pointOfView();
                    
                     let closestCity = null;
@@ -834,9 +831,6 @@ function jumpToStation(city, targetStation) {
 
                 world.controls().addEventListener('end',()=>{
                     if (isAutoFlying) return;
-                    isDown = true;
-                    stationListEl.style.display = 'block'
-                        upDown.innerHTML = '<i class="fa-solid fa-angle-down fa-xs"></i>' 
                     if (currentFocusedCity){
                         const currentAltitude = world.pointOfView().altitude;
 
